@@ -132,20 +132,35 @@ def load_svm():
 def load_bert():
     try:
         import torch
+        import zipfile
         from transformers import (
             DistilBertTokenizerFast,
             DistilBertForSequenceClassification,
         )
+
+        # Unzip if needed
+        if not os.path.exists("best_distilbert.pt") and os.path.exists("best_distilbert.zip"):
+            with zipfile.ZipFile("best_distilbert.zip", "r") as z:
+                z.extractall(".")
+
         tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
         model = DistilBertForSequenceClassification.from_pretrained(
             "distilbert-base-uncased", num_labels=3
         )
+
+        # Try .pt file first, then try folder format
         if os.path.exists("best_distilbert.pt"):
             model.load_state_dict(
                 torch.load("best_distilbert.pt", map_location="cpu")
             )
-        else:
-            st.warning("best_distilbert.pt not found — using base weights (may be inaccurate).")
+        elif os.path.exists("best_distilbert"):
+            # It's a torch.save() folder format — load directly
+            loaded = torch.load("best_distilbert", map_location="cpu")
+            if isinstance(loaded, dict):
+                model.load_state_dict(loaded)
+            else:
+                model = loaded
+        
         model.eval()
         return tokenizer, model
     except Exception as e:

@@ -189,10 +189,10 @@ def predict_bert(text, tokenizer, model):
  
  
 def render_result(sentiment, confidence, model_name, truncated):
-    css_class = f"sentiment-{sentiment.lower()}"
-    emoji     = {"Positive": "✦", "Negative": "✕", "Neutral": "◉"}.get(sentiment, "")
-    bar_color = {"Positive": "#6fcf97", "Negative": "#eb5757", "Neutral": "#f2c94c"}.get(sentiment, "#888")
-
+    css_class  = f"sentiment-{sentiment.lower()}"
+    emoji      = {"Positive": "✦", "Negative": "✕", "Neutral": "◉"}.get(sentiment, "")
+    bar_color  = {"Positive": "#6fcf97", "Negative": "#eb5757", "Neutral": "#f2c94c"}.get(sentiment, "#888")
+ 
     conf_html = ""
     if confidence is not None:
         pct = int(confidence * 100)
@@ -201,13 +201,51 @@ def render_result(sentiment, confidence, model_name, truncated):
           <div class="confidence-bar-fill" style="width:{pct}%;background:{bar_color};"></div>
         </div>
         <div class="conf-text">Confidence: {pct}%</div>"""
-
+ 
     trunc_html = '<div class="warning-box">⚠ Input exceeded 128 tokens and was truncated.</div>' if truncated else ""
-
+ 
     st.markdown(f"""
     <div class="result-card">
-      <div class="result-label">SENTIMENT DETECTED</div>
+      <div class="result-label">Sentiment detected</div>
       <div class="result-sentiment {css_class}">{emoji} {sentiment}</div>
       {conf_html}
       {trunc_html}
+      <div class="pill-model">{model_name}</div>
     </div>""", unsafe_allow_html=True)
+ 
+ 
+# ── UI ────────────────────────────────────────────────────────────────────────
+st.markdown('<div class="hero-title">Sentiment Analyzer</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-sub">Product review analysis · DistilBERT or SVM · Negative · Neutral · Positive</div>', unsafe_allow_html=True)
+ 
+model_choice = st.radio("Model", ["DistilBERT", "SVM"], horizontal=True, label_visibility="collapsed")
+ 
+review_text = st.text_area(
+    "Review",
+    placeholder="Paste a product review here…",
+    height=160,
+    label_visibility="collapsed",
+)
+ 
+if st.button("Analyse sentiment"):
+    if not review_text.strip():
+        st.error("Please enter some text before analysing.")
+    elif model_choice == "SVM":
+        tfidf, svm = load_svm()
+        if svm is None:
+            st.error("SVM model files not found. Make sure `tfidf_vectorizer.pkl` and `svm_model.pkl` are committed to your repo.")
+        else:
+            with st.spinner("Analysing…"):
+                sentiment, conf, truncated = predict_svm(review_text, tfidf, svm)
+            render_result(sentiment, conf, "SVM · TF-IDF", truncated)
+    else:
+        tokenizer, bert_model = load_bert()
+        if bert_model is None:
+            st.error("BERT model could not be loaded. Check your requirements.txt includes torch and transformers.")
+        else:
+            with st.spinner("Running DistilBERT…"):
+                sentiment, conf, truncated = predict_bert(review_text, tokenizer, bert_model)
+            render_result(sentiment, conf, "DistilBERT", truncated)
+ 
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown('<div style="font-size:0.78rem;color:#4a4845;text-align:center;">3-class · Negative · Neutral · Positive</div>', unsafe_allow_html=True)

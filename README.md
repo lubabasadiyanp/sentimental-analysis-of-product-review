@@ -108,7 +108,7 @@ streamlit run app.py
 
 ## 📷 App Interface
 
-![App Interface](app%20interface.jpg)
+![App Interface](app_interface.jpg)
 
 ---
 

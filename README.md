@@ -1,4 +1,3 @@
-# sentimental-analysis-of-product-review
 # 🎯 Sentiment Analysis of Product Reviews
 
 A machine learning web application that classifies product reviews as **Positive**, **Negative**, or **Neutral** using two models — **SVM + TF-IDF** and **DistilBERT** — with an interactive UI built in **Streamlit**.
@@ -42,19 +41,29 @@ A machine learning web application that classifies product reviews as **Positive
 ### 1. SVM + TF-IDF
 - TF-IDF converts text into numerical vectors
 - SVM classifier predicts sentiment class
-- **Accuracy: 75%**
+- **Accuracy: 75.6%**
 - Strong performance on Positive and Negative; Neutral class is harder
 
 ### 2. DistilBERT (Fine-tuned)
 - Pretrained transformer model fine-tuned on the Yelp dataset
 - Captures contextual meaning of words
-- Higher accuracy than SVM
-- Slower but more powerful
+- **Accuracy: 76.3%**
+- Higher F1 Score than SVM
 
-| Model        | Approach       | Speed  | Accuracy |
-|--------------|----------------|--------|----------|
-| SVM + TF-IDF | Traditional ML | Fast   | 75%      |
-| DistilBERT   | Deep Learning  | Slower | Higher   |
+---
+
+## 📊 Model Performance
+
+| Model        | Accuracy | F1 Score (macro) |
+|--------------|----------|------------------|
+| SVM + TF-IDF | 75.6%    | 69.8%            |
+| DistilBERT   | 76.3%    | 71.0%            |
+
+### Performance Trend (Line Plot)
+![SVM vs DistilBERT Line Plot](lineplot.png)
+
+### Side-by-Side Comparison (Bar Plot)
+![SVM vs DistilBERT Bar Plot](barplot.png)
 
 ---
 

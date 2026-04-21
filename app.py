@@ -1,31 +1,26 @@
 import os
 import re
 import pickle
- 
+
 import streamlit as st
- 
+
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Sentiment Analyzer",
     page_icon="🔍",
     layout="centered",
 )
-import os
-files = []
-for root, dirs, filenames in os.walk("."):
-    for f in filenames:
-        files.append(os.path.join(root, f))
-st.write(files)
+
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
- 
+
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 h1, h2, h3 { font-family: 'DM Serif Display', serif; }
- 
+
 .stApp { background: #0f0f13; color: #e8e6df; }
- 
+
 .hero-title {
     font-family: 'DM Serif Display', serif;
     font-size: 2.6rem;
@@ -116,8 +111,8 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif; }
 hr { border-color: rgba(255,255,255,0.06); margin: 28px 0; }
 </style>
 """, unsafe_allow_html=True)
- 
- 
+
+
 # ── Model loaders (cached — runs only once per session) ───────────────────────
 @st.cache_resource
 def load_svm():
@@ -131,69 +126,61 @@ def load_svm():
     except Exception as e:
         st.warning(f"SVM models could not be loaded: {e}")
     return None, None
- 
- 
+
+
 @st.cache_resource
 def load_bert():
     try:
         import torch
-        import zipfile
         from transformers import (
             DistilBertTokenizerFast,
             DistilBertForSequenceClassification,
         )
-
-        # Unzip if needed
-        if not os.path.exists("best_distilbert.pt") and os.path.exists("best_distilbert.zip"):
-            with zipfile.ZipFile("best_distilbert.zip", "r") as z:
-                z.extractall(".")
-
         tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
         model = DistilBertForSequenceClassification.from_pretrained(
             "distilbert-base-uncased", num_labels=3
         )
-
-        # Try .pt file first, then try folder format
         if os.path.exists("best_distilbert.pt"):
             model.load_state_dict(
                 torch.load("best_distilbert.pt", map_location="cpu")
             )
-        elif os.path.exists("best_distilbert"):
-            # It's a torch.save() folder format — load directly
-            loaded = torch.load("best_distilbert", map_location="cpu")
-            if isinstance(loaded, dict):
-                model.load_state_dict(loaded)
-            else:
-                model = loaded
-        
+        else:
+            st.warning("best_distilbert.pt not found — using base weights (may be inaccurate).")
         model.eval()
         return tokenizer, model
     except Exception as e:
         st.warning(f"BERT model could not be loaded: {e}")
     return None, None
- 
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 LABEL_MAP = {0: "Negative", 1: "Neutral", 2: "Positive"}
- 
+
 def clean_text(text: str) -> str:
     text = str(text).lower().strip()
     text = re.sub(r"http\S+|www\.\S+", "", text)
     text = re.sub(r"<.*?>", "", text)
     text = re.sub(r"[^\w\s!?.,'\"-]", "", text)
     return re.sub(r"\s+", " ", text).strip()
- 
- 
+
+
 def predict_svm(text, tfidf, svm):
     cleaned = clean_text(text)
     vec = tfidf.transform([cleaned])
     pred = svm.predict(vec)[0]
-    
+
     label_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
     sentiment = label_map.get(int(pred), "Unknown")
-    
-    return sentiment, None, False
- 
- 
+
+    try:
+        proba = svm.predict_proba(vec)[0]
+        confidence = round(float(max(proba)), 4)
+    except:
+        confidence = None
+
+    return sentiment, confidence, False
+
+
 def predict_bert(text, tokenizer, model):
     import torch
     cleaned = clean_text(text)
@@ -205,13 +192,13 @@ def predict_bert(text, tokenizer, model):
     pred       = logits.argmax(dim=1).item()
     confidence = torch.softmax(logits, dim=1).max().item()
     return LABEL_MAP[pred], round(confidence, 4), original_len > 128
- 
- 
+
+
 def render_result(sentiment, confidence, model_name, truncated):
     css_class  = f"sentiment-{sentiment.lower()}"
     emoji      = {"Positive": "✦", "Negative": "✕", "Neutral": "◉"}.get(sentiment, "")
     bar_color  = {"Positive": "#6fcf97", "Negative": "#eb5757", "Neutral": "#f2c94c"}.get(sentiment, "#888")
- 
+
     conf_html = ""
     if confidence is not None:
         pct = int(confidence * 100)
@@ -220,9 +207,9 @@ def render_result(sentiment, confidence, model_name, truncated):
           <div class="confidence-bar-fill" style="width:{pct}%;background:{bar_color};"></div>
         </div>
         <div class="conf-text">Confidence: {pct}%</div>"""
- 
+
     trunc_html = '<div class="warning-box">⚠ Input exceeded 128 tokens and was truncated.</div>' if truncated else ""
- 
+
     st.markdown(f"""
     <div class="result-card">
       <div class="result-label">Sentiment detected</div>
@@ -231,21 +218,21 @@ def render_result(sentiment, confidence, model_name, truncated):
       {trunc_html}
       <div class="pill-model">{model_name}</div>
     </div>""", unsafe_allow_html=True)
- 
- 
+
+
 # ── UI ────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="hero-title">Sentiment Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Product review analysis · DistilBERT or SVM · Negative · Neutral · Positive</div>', unsafe_allow_html=True)
- 
+
 model_choice = st.radio("Model", ["DistilBERT", "SVM"], horizontal=True, label_visibility="collapsed")
- 
+
 review_text = st.text_area(
     "Review",
     placeholder="Paste a product review here…",
     height=160,
     label_visibility="collapsed",
 )
- 
+
 if st.button("Analyse sentiment"):
     if not review_text.strip():
         st.error("Please enter some text before analysing.")
@@ -265,6 +252,6 @@ if st.button("Analyse sentiment"):
             with st.spinner("Running DistilBERT…"):
                 sentiment, conf, truncated = predict_bert(review_text, tokenizer, bert_model)
             render_result(sentiment, conf, "DistilBERT", truncated)
- 
+
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown('<div style="font-size:0.78rem;color:#4a4845;text-align:center;">3-class · Negative · Neutral · Positive</div>', unsafe_allow_html=True)

@@ -10,7 +10,12 @@ st.set_page_config(
     page_icon="🔍",
     layout="centered",
 )
- 
+import os
+files = []
+for root, dirs, filenames in os.walk("."):
+    for f in filenames:
+        files.append(os.path.join(root, f))
+st.write(files)
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>

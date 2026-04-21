@@ -164,12 +164,14 @@ def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
  
  
-def predict_svm(text, tfidf, svm):
-    cleaned = clean_text(text)
-    vec  = tfidf.transform([cleaned])
-    pred = svm.predict(vec)[0]
-    sentiment = LABEL_MAP.get(int(pred), str(pred)) if isinstance(pred, (int, float)) else str(pred)
-    return sentiment, None, False
+def predict_svm(text):
+    vector = tfidf_vectorizer.transform([text])
+    prediction = svm_model.predict(vector)[0]
+    
+    label_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    sentiment = label_map[prediction]
+    
+    return sentiment
  
  
 def predict_bert(text, tokenizer, model):

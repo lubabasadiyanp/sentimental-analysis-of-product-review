@@ -106,10 +106,6 @@ streamlit run app.py
 
 ---
 
-## 📷 App Interface
-
-![App Interface](app_interface.jpg)
-
 ---
 
 ## 👩‍💻 Authors

@@ -1,6 +1,8 @@
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
-pydantic>=2.0.0
-scikit-learn>=1.4.0
-torch>=2.2.0
-transformers>=4.40.0
+plotly
+scipy
+scikit-learn
+xgboost
+nltk
+wordcloud
+transformers
+torch
